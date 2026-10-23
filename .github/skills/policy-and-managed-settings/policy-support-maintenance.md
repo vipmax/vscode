@@ -63,6 +63,6 @@ The readiness summary reports policy names, configuration keys, source labels, a
 - Test existing harness policy-over-user precedence using real configuration layering, and test policy removal and inventory graduation to enforced.
 - Test readiness content, including uncertainty and safe rendering. Do not include raw sensitive values in new diagnostics summaries.
 - For bridge changes, exercise the bundled runtime with isolated temporary homes and a synthetic local model. Check create, cold resume, removal, managed asks under Allow All/assisted modes, and unaffected requests. No real Copilot sign-in or device-policy changes should be needed for these fixtures.
-- Run focused suites, client type checking, and lint as appropriate. Run the canonical `npm run export-policy-data` after inventory, DTO, or policy changes; never hand-edit the generated catalog. The catalog test must cover every exported policy, and both product entrypoints must agree.
+- Run focused suites, client type checking, and lint as appropriate. Run the canonical `pnpm run export-policy-data` after inventory, DTO, or policy changes; never hand-edit the generated catalog. The catalog test must cover every exported policy, and both product entrypoints must agree.
 
 For setting registration and policy-export details, see [VS Code configuration policy](./vscode-policy.md).

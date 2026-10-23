@@ -5,7 +5,7 @@ Use [`scripts/mock-policy-server/`](../../../scripts/mock-policy-server/) to tes
 ## Quick start
 
 ```sh
-npm run mock-policy-server          # http://127.0.0.1:3000
+pnpm run mock-policy-server          # http://127.0.0.1:3000
 ```
 
 Only managed settings is mocked by default. Use the switch beside each endpoint tab to choose mock or passthrough. Presets apply immediately; response edits auto-save.

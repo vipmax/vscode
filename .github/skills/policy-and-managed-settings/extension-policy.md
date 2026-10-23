@@ -24,7 +24,7 @@ The source of truth is `extensionConfigurationPolicy` in `vscode-distro` `mixin/
 3. Update VS Code's pinned distro commit.
 4. Update `src/vs/workbench/contrib/policyExport/test/node/extensionPolicyFixture.json`.
 5. Add the policy's Agent Host enforcement status to `agentHostPolicySupport` in `src/vs/platform/agentHost/common/agentHostPolicySupport.ts`. The export fails without it.
-6. Run `npm run export-policy-data`.
+6. Run `pnpm run export-policy-data`.
 7. Verify and include `build/lib/policies/policyData.jsonc`.
 
 The fixture must match the pinned distro policy data or the policy-export integration test fails.
