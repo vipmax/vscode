@@ -1,0 +1,67 @@
+parameters:
+  # Condition of the steps, for example to install pnpm only when the node_modules cache missed.
+  - name: condition
+    type: string
+    default: succeeded()
+  # Folder whose npm configuration (registry and authentication) the installation uses.
+  - name: workingDirectory
+    type: string
+    default: $(Build.SourcesDirectory)
+  # Whether to set the NPM_REGISTRY feed and its authentication in the user npm configuration first,
+  # for jobs that don't do it themselves.
+  - name: setupRegistry
+    type: boolean
+    default: false
+
+# Installs the pnpm version that the `packageManager` field of the root package.json pins, unless it
+# is already installed. Use it after Node.js, the npm registry and its authentication are set up
+# (or with setupRegistry), so that pnpm comes from the same registry as the dependencies.
+steps:
+  - ${{ if eq(parameters.setupRegistry, true) }}:
+    - script: |
+        set -e
+        npm config set registry "$NPM_REGISTRY"
+        echo "##vso[task.setvariable variable=NPMRC_PATH]$(npm config get userconfig)"
+      condition: and(${{ parameters.condition }}, ne(variables['NPM_REGISTRY'], 'none'), ne(variables['Agent.OS'], 'Windows_NT'))
+      displayName: Setup NPM
+
+    - powershell: |
+        . $env:BUILD_SOURCESDIRECTORY/build/azure-pipelines/win32/exec.ps1
+        $ErrorActionPreference = "Stop"
+        exec { npm config set registry "$env:NPM_REGISTRY" }
+        $NpmrcPath = (npm config get userconfig)
+        echo "##vso[task.setvariable variable=NPMRC_PATH]$NpmrcPath"
+      condition: and(${{ parameters.condition }}, ne(variables['NPM_REGISTRY'], 'none'), eq(variables['Agent.OS'], 'Windows_NT'))
+      displayName: Setup NPM
+
+    - task: npmAuthenticate@0
+      inputs:
+        workingFile: $(NPMRC_PATH)
+      condition: and(${{ parameters.condition }}, ne(variables['NPM_REGISTRY'], 'none'))
+      displayName: Setup NPM Authentication
+
+  - script: |
+      set -e
+      PNPM_VERSION=$(node -p "require(process.env.BUILD_SOURCESDIRECTORY + '/package.json').packageManager.split('+')[0].split('@')[1]")
+      if [ "$(pnpm --version 2>/dev/null || true)" != "$PNPM_VERSION" ]; then
+        npm install -g "pnpm@$PNPM_VERSION"
+      fi
+      pnpm --version
+    workingDirectory: ${{ parameters.workingDirectory }}
+    condition: and(${{ parameters.condition }}, ne(variables['Agent.OS'], 'Windows_NT'))
+    retryCountOnTaskFailure: 3
+    displayName: Install pnpm
+
+  - powershell: |
+      . $env:BUILD_SOURCESDIRECTORY/build/azure-pipelines/win32/exec.ps1
+      $ErrorActionPreference = "Stop"
+      $PnpmVersion = (node -p "require(process.env.BUILD_SOURCESDIRECTORY + '/package.json').packageManager.split('+')[0].split('@')[1]")
+      $InstalledVersion = if (Get-Command pnpm -ErrorAction SilentlyContinue) { (pnpm --version) } else { "" }
+      if ($InstalledVersion -ne $PnpmVersion) {
+        exec { npm install -g "pnpm@$PnpmVersion" }
+      }
+      exec { pnpm --version }
+    workingDirectory: ${{ parameters.workingDirectory }}
+    condition: and(${{ parameters.condition }}, eq(variables['Agent.OS'], 'Windows_NT'))
+    retryCountOnTaskFailure: 3
+    displayName: Install pnpm
