@@ -27,7 +27,6 @@ import { ViewContext } from '../../../common/viewModel/viewContext.js';
 import { ViewLineOptions } from './viewLineOptions.js';
 import type { ViewGpuContext } from '../../gpu/viewGpuContext.js';
 import { TextDirection } from '../../../common/model.js';
-import { NATIVE_SCROLL } from '../../nativeScroll.js';
 
 class LastRenderedData {
 
@@ -128,8 +127,11 @@ export class ViewLines extends ViewPart implements IViewLines {
 	private _stickyScrollEnabled: boolean;
 	private _maxNumberStickyLines: number;
 
+	private readonly _nativeScroll: boolean;
+
 	constructor(context: ViewContext, viewGpuContext: ViewGpuContext | undefined, linesContent: FastDomNode<HTMLElement>) {
 		super(context);
+		this._nativeScroll = this._context.configuration.options.get(EditorOption.experimentalNativeScroll);
 
 		const conf = this._context.configuration;
 		const options = this._context.configuration.options;
@@ -672,7 +674,7 @@ export class ViewLines extends ViewPart implements IViewLines {
 		// (3) handle scrolling
 		this._linesContent.setLayerHinting(this._canUseLayerHinting);
 		this._linesContent.setContain('strict');
-		if (NATIVE_SCROLL) {
+		if (this._nativeScroll) {
 			// The browser scrolls the container holding `.lines-content`, so lines stay at content offsets.
 			this._linesContent.setTop(viewportData.bigNumbersDelta);
 			// Size the box to the scroll extent: `contain: strict` clips its children to it, so they can't extend the scroll range.

@@ -738,6 +738,12 @@ export interface IEditorOptions {
 	 */
 	experimentalGpuAcceleration?: 'on' | 'off';
 	/**
+	 * Enable native scrolling: the browser scrolls the editor content instead of Monaco's emulated scrollbar.
+	 * Applies to editors created after the setting changes.
+	 * Defaults to false.
+	 */
+	experimentalNativeScroll?: boolean;
+	/**
 	 * Enable experimental whitespace rendering.
 	 * Defaults to 'svg'.
 	 */
@@ -6024,7 +6030,8 @@ export const enum EditorOption {
 	doubleClickSelectsBlock,
 	fullwidthCharacterWidth,
 	// Must come after `fullwidthCharacterWidth`, which it is computed from.
-	effectiveFullwidthCharacterWidth
+	effectiveFullwidthCharacterWidth,
+	experimentalNativeScroll
 }
 
 export const EditorOptions = {
@@ -6352,6 +6359,13 @@ export const EditorOptions = {
 				nls.localize('experimentalGpuAcceleration.on', "Use GPU acceleration."),
 			],
 			description: nls.localize('experimentalGpuAcceleration', "Controls whether to use the experimental GPU acceleration to render the editor.")
+		}
+	)),
+	experimentalNativeScroll: register(new EditorBooleanOption(
+		EditorOption.experimentalNativeScroll, 'experimentalNativeScroll', false,
+		{
+			tags: ['experimental'],
+			description: nls.localize('experimentalNativeScroll', "Controls whether the browser scrolls the editor content natively instead of with Monaco's emulated scrollbar. Requires reloading the window."),
 		}
 	)),
 	experimentalWhitespaceRendering: register(new EditorStringEnumOption(

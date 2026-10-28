@@ -15,7 +15,6 @@ import * as viewEvents from '../../../common/viewEvents.js';
 import { getThemeTypeSelector } from '../../../../platform/theme/common/themeService.js';
 import { EditorOption } from '../../../common/config/editorOptions.js';
 import { IMouseWheelEvent } from '../../../../base/browser/mouseEvent.js';
-import { NATIVE_SCROLL } from '../../nativeScroll.js';
 
 /**
  * Native mode: the element the browser scrolls. It holds the lines and fills the scrollbar's root.
@@ -53,6 +52,8 @@ export class EditorScrollbar extends ViewPart {
 	 */
 	private _nativeScrollWritten = { scrollTop: 0, scrollLeft: 0 };
 
+	private readonly _nativeScroll: boolean;
+
 	constructor(
 		context: ViewContext,
 		linesContent: FastDomNode<HTMLElement>,
@@ -60,6 +61,7 @@ export class EditorScrollbar extends ViewPart {
 		overflowGuardDomNode: FastDomNode<HTMLElement>
 	) {
 		super(context);
+		this._nativeScroll = this._context.configuration.options.get(EditorOption.experimentalNativeScroll);
 
 
 		const options = this._context.configuration.options;
@@ -83,7 +85,7 @@ export class EditorScrollbar extends ViewPart {
 			verticalSliderSize: scrollbar.verticalSliderSize,
 			horizontalScrollbarSize: scrollbar.horizontalScrollbarSize,
 			horizontalSliderSize: scrollbar.horizontalSliderSize,
-			handleMouseWheel: NATIVE_SCROLL ? false : scrollbar.handleMouseWheel,
+			handleMouseWheel: this._nativeScroll ? false : scrollbar.handleMouseWheel,
 			alwaysConsumeMouseWheel: scrollbar.alwaysConsumeMouseWheel,
 			arrowSize: scrollbar.arrowSize,
 			mouseWheelScrollSensitivity: mouseWheelScrollSensitivity,
@@ -95,7 +97,7 @@ export class EditorScrollbar extends ViewPart {
 
 		// Native mode: the browser scrolls a container that holds the lines. It is a sibling of the scrollbars, not
 		// their parent, so the thumbs stay in place while the content scrolls.
-		const nativeScrollContainer = NATIVE_SCROLL ? createNativeScrollContainer(linesContent) : null;
+		const nativeScrollContainer = this._nativeScroll ? createNativeScrollContainer(linesContent) : null;
 
 		this.scrollbar = this._register(new SmoothScrollableElement(nativeScrollContainer ? nativeScrollContainer.domNode : linesContent.domNode, scrollbarOptions, this._context.viewLayout.getScrollable()));
 		PartFingerprints.write(this.scrollbar.getDomNode(), PartFingerprint.ScrollableElement);
@@ -150,7 +152,7 @@ export class EditorScrollbar extends ViewPart {
 		this._register(dom.addDisposableListener(viewDomNode.domNode, 'scroll', (e: Event) => onBrowserDesperateReveal(viewDomNode.domNode, true, true)));
 		this._register(dom.addDisposableListener(linesContent.domNode, 'scroll', (e: Event) => onBrowserDesperateReveal(linesContent.domNode, true, false)));
 		this._register(dom.addDisposableListener(overflowGuardDomNode.domNode, 'scroll', (e: Event) => onBrowserDesperateReveal(overflowGuardDomNode.domNode, true, false)));
-		if (NATIVE_SCROLL) {
+		if (this._nativeScroll) {
 			// The browser scrolls the scroll container; mirror its position into the view model.
 			this._register(dom.addDisposableListener(this.scrollContainer.domNode, 'scroll', () => {
 				const { scrollTop, scrollLeft } = this.scrollContainer.domNode;
@@ -171,8 +173,8 @@ export class EditorScrollbar extends ViewPart {
 		const layoutInfo = options.get(EditorOption.layoutInfo);
 
 		// In native mode the scroll container also holds the gutter, so it starts at the editor's left edge.
-		const gutterWidth = NATIVE_SCROLL ? layoutInfo.contentLeft : 0;
-		this.scrollbarDomNode.setLeft(NATIVE_SCROLL ? 0 : layoutInfo.contentLeft);
+		const gutterWidth = this._nativeScroll ? layoutInfo.contentLeft : 0;
+		this.scrollbarDomNode.setLeft(this._nativeScroll ? 0 : layoutInfo.contentLeft);
 
 		const minimap = options.get(EditorOption.minimap);
 		const side = minimap.side;
@@ -202,7 +204,7 @@ export class EditorScrollbar extends ViewPart {
 	}
 
 	public delegateScrollFromMouseWheelEvent(browserEvent: IMouseWheelEvent) {
-		if (NATIVE_SCROLL) {
+		if (this._nativeScroll) {
 			this.scrollContainer.domNode.scrollBy({ top: browserEvent.deltaY, left: browserEvent.deltaX });
 			return;
 		}
@@ -228,7 +230,7 @@ export class EditorScrollbar extends ViewPart {
 				verticalScrollbarSize: scrollbar.verticalScrollbarSize,
 				horizontalScrollbarSize: scrollbar.horizontalScrollbarSize,
 				scrollByPage: scrollbar.scrollByPage,
-				handleMouseWheel: NATIVE_SCROLL ? false : scrollbar.handleMouseWheel,
+				handleMouseWheel: this._nativeScroll ? false : scrollbar.handleMouseWheel,
 				mouseWheelScrollSensitivity: mouseWheelScrollSensitivity,
 				fastScrollSensitivity: fastScrollSensitivity,
 				scrollPredominantAxis: scrollPredominantAxis

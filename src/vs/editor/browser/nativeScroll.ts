@@ -4,15 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 /**
- * PROTOTYPE (anycode-scroll): when `true`, vertical and horizontal scrolling is done by the
- * browser (`overflow: auto` on the scroll container, which holds `.lines-content`) instead of
- * Monaco's emulated scrollable that moves `.lines-content` with `top`/`left`.
- * `EditorScrollbar` and `ViewLines.renderText` both branch on this flag.
- */
-export const NATIVE_SCROLL = true;
-
-/**
- * PROTOTYPE: extra pixels rendered above and below the visible area when `NATIVE_SCROLL` is on.
+ * PROTOTYPE: extra pixels rendered above and below the visible area when native scroll is on.
  * The browser can scroll a frame before Monaco re-renders the lines; without this margin the
  * newly exposed rows are blank for that frame. 450px is 25 rows at 18px, like anycode's `buffer`.
  */

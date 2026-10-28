@@ -7,7 +7,6 @@ import './margin.css';
 import { FastDomNode, createFastDomNode } from '../../../../base/browser/fastDomNode.js';
 import { ViewPart } from '../../view/viewPart.js';
 import { RenderingContext, RestrictedRenderingContext } from '../../view/renderingContext.js';
-import { NATIVE_SCROLL } from '../../nativeScroll.js';
 import { ViewContext } from '../../../common/viewModel/viewContext.js';
 import * as viewEvents from '../../../common/viewEvents.js';
 import { EditorOption } from '../../../common/config/editorOptions.js';
@@ -29,8 +28,11 @@ export class Margin extends ViewPart {
 	private _glyphMarginWidth: number;
 	private _glyphMarginBackgroundDomNode: FastDomNode<HTMLElement>;
 
+	private readonly _nativeScroll: boolean;
+
 	constructor(context: ViewContext) {
 		super(context);
+		this._nativeScroll = this._context.configuration.options.get(EditorOption.experimentalNativeScroll);
 		const options = this._context.configuration.options;
 		const layoutInfo = options.get(EditorOption.layoutInfo);
 
@@ -41,7 +43,7 @@ export class Margin extends ViewPart {
 
 		this._domNode = createFastDomNode(document.createElement('div'));
 		this._domNode.setClassName(Margin.OUTER_CLASS_NAME);
-		if (NATIVE_SCROLL) {
+		if (this._nativeScroll) {
 			// In flow inside the browser's scroll container: it scrolls with the lines and only sticks horizontally.
 			this._domNode.setPosition('sticky');
 			this._domNode.setLeft(0);
@@ -91,7 +93,7 @@ export class Margin extends ViewPart {
 		this._domNode.setLayerHinting(this._canUseLayerHinting);
 		this._domNode.setContain('strict');
 		let height: number;
-		if (NATIVE_SCROLL) {
+		if (this._nativeScroll) {
 			// The browser places it in flow; its offset is the big-numbers delta the lines use, not the scroll position.
 			this._domNode.domNode.style.marginTop = `${ctx.bigNumbersDelta}px`;
 			height = Math.min(ctx.scrollHeight - ctx.bigNumbersDelta, 1000000);

@@ -67,7 +67,7 @@ import { GpuMarkOverlay } from './viewParts/gpuMark/gpuMark.js';
 import { AccessibilitySupport } from '../../platform/accessibility/common/accessibility.js';
 import { Event, Emitter } from '../../base/common/event.js';
 import { IUserInteractionService } from '../../platform/userInteraction/browser/userInteractionService.js';
-import { NATIVE_SCROLL, NATIVE_SCROLL_OVERSCAN_PX } from './nativeScroll.js';
+import { NATIVE_SCROLL_OVERSCAN_PX } from './nativeScroll.js';
 
 
 export interface IContentWidgetData {
@@ -90,6 +90,7 @@ export class View extends ViewEventHandler {
 	private _widgetFocusTracker: CodeEditorWidgetFocusTracker;
 
 	private readonly _scrollbar: EditorScrollbar;
+	private readonly _nativeScroll: boolean;
 	private readonly _context: ViewContext;
 	private readonly _viewGpuContext?: ViewGpuContext;
 	private _selections: Selection[];
@@ -166,6 +167,7 @@ export class View extends ViewEventHandler {
 
 		// The view context is passed on to most classes (basically to reduce param. counts in ctors)
 		this._context = new ViewContext(configuration, colorTheme, model);
+		this._nativeScroll = this._context.configuration.options.get(EditorOption.experimentalNativeScroll);
 
 		// Ensure the view is the first event handler in order to update the layout
 		this._context.addEventHandler(this);
@@ -281,7 +283,7 @@ export class View extends ViewEventHandler {
 		this._linesContent.appendChild(this._viewLines.getDomNode());
 		this._linesContent.appendChild(this._contentWidgets.domNode);
 		this._linesContent.appendChild(this._viewCursors.getDomNode());
-		if (NATIVE_SCROLL) {
+		if (this._nativeScroll) {
 			// Inside the browser's scroll container, so the gutter scrolls with the lines.
 			this._scrollbar.getScrollContainerDomNode().appendChild(margin.getDomNode());
 		} else {
@@ -460,7 +462,7 @@ export class View extends ViewEventHandler {
 		this._overflowGuardContainer.setHeight(layoutInfo.height);
 
 		// https://stackoverflow.com/questions/38905916/content-in-google-chrome-larger-than-16777216-px-not-being-rendered
-		if (NATIVE_SCROLL) {
+		if (this._nativeScroll) {
 			// The scroll container starts at the editor's left edge (it also holds the gutter), so offset the lines.
 			this._linesContent.setLeft(layoutInfo.contentLeft);
 		} else {
@@ -624,7 +626,7 @@ export class View extends ViewEventHandler {
 					return null;
 				}
 
-				const overscanPx = NATIVE_SCROLL ? NATIVE_SCROLL_OVERSCAN_PX : 0;
+				const overscanPx = this._nativeScroll ? NATIVE_SCROLL_OVERSCAN_PX : 0;
 				const partialViewportData = this._context.viewLayout.getLinesViewportData(overscanPx);
 				this._context.viewModel.setViewport(partialViewportData.startLineNumber, partialViewportData.endLineNumber, partialViewportData.centeredLineNumber);
 

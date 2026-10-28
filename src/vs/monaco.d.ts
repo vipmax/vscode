@@ -3893,6 +3893,12 @@ declare namespace monaco.editor {
 		 */
 		experimentalGpuAcceleration?: 'on' | 'off';
 		/**
+		 * Enable native scrolling: the browser scrolls the editor content instead of Monaco's emulated scrollbar.
+		 * Applies to editors created after the setting changes.
+		 * Defaults to false.
+		 */
+		experimentalNativeScroll?: boolean;
+		/**
 		 * Enable experimental whitespace rendering.
 		 * Defaults to 'svg'.
 		 */
@@ -5284,7 +5290,8 @@ declare namespace monaco.editor {
 		effectiveAllowVariableFonts = 175,
 		doubleClickSelectsBlock = 176,
 		fullwidthCharacterWidth = 177,
-		effectiveFullwidthCharacterWidth = 178
+		effectiveFullwidthCharacterWidth = 178,
+		experimentalNativeScroll = 179
 	}
 
 	export const EditorOptions: {
@@ -5341,6 +5348,7 @@ declare namespace monaco.editor {
 		renderRichScreenReaderContent: IEditorOption<EditorOption.renderRichScreenReaderContent, boolean>;
 		stickyScroll: IEditorOption<EditorOption.stickyScroll, Readonly<Required<IEditorStickyScrollOptions>>>;
 		experimentalGpuAcceleration: IEditorOption<EditorOption.experimentalGpuAcceleration, 'on' | 'off'>;
+		experimentalNativeScroll: IEditorOption<EditorOption.experimentalNativeScroll, boolean>;
 		experimentalWhitespaceRendering: IEditorOption<EditorOption.experimentalWhitespaceRendering, 'off' | 'font' | 'svg'>;
 		extraEditorClassName: IEditorOption<EditorOption.extraEditorClassName, string>;
 		fastScrollSensitivity: IEditorOption<EditorOption.fastScrollSensitivity, number>;
