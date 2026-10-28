@@ -164,20 +164,19 @@ class ElementPath {
 		);
 	}
 
+	// Search the path instead of assuming a fixed depth: native scroll inserts a viewport element
+	// between the scrollable element and the lines content, which moves view-lines one level down.
+	private static _viewLinesIndex(path: Uint8Array): number {
+		return path[0] === PartFingerprint.OverflowGuard ? path.indexOf(PartFingerprint.ViewLines) : -1;
+	}
+
 	public static isChildOfViewLines(path: Uint8Array): boolean {
-		return (
-			path.length >= 4
-			&& path[0] === PartFingerprint.OverflowGuard
-			&& path[3] === PartFingerprint.ViewLines
-		);
+		return ElementPath._viewLinesIndex(path) !== -1;
 	}
 
 	public static isStrictChildOfViewLines(path: Uint8Array): boolean {
-		return (
-			path.length > 4
-			&& path[0] === PartFingerprint.OverflowGuard
-			&& path[3] === PartFingerprint.ViewLines
-		);
+		const index = ElementPath._viewLinesIndex(path);
+		return index !== -1 && index < path.length - 1;
 	}
 
 	public static isChildOfScrollableElement(path: Uint8Array): boolean {

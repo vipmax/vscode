@@ -15,8 +15,22 @@ import * as viewEvents from '../../../common/viewEvents.js';
 import { getThemeTypeSelector } from '../../../../platform/theme/common/themeService.js';
 import { EditorOption } from '../../../common/config/editorOptions.js';
 import { IMouseWheelEvent } from '../../../../base/browser/mouseEvent.js';
-import { ScrollbarVisibility } from '../../../../base/common/scrollable.js';
 import { NATIVE_SCROLL } from '../../nativeScroll.js';
+
+/**
+ * Native mode: the element the browser scrolls. It holds the lines and fills the scrollbar's root.
+ */
+function createNativeScrollContainer(linesContent: FastDomNode<HTMLElement>): FastDomNode<HTMLElement> {
+	const container = createFastDomNode<HTMLElement>(document.createElement('div'));
+	container.setClassName('native-scroll-container');
+	container.setPosition('absolute');
+	container.setTop(0);
+	container.setLeft(0);
+	container.setWidth('100%');
+	container.setHeight('100%');
+	container.appendChild(linesContent);
+	return container;
+}
 
 /**
  * The editor scrollbar built on VS Code's scrollable element that sits beside
@@ -26,6 +40,11 @@ export class EditorScrollbar extends ViewPart {
 
 	private readonly scrollbar: SmoothScrollableElement;
 	private readonly scrollbarDomNode: FastDomNode<HTMLElement>;
+	/**
+	 * The element the view's scroll position is applied to. In native mode it is the browser's scroll container,
+	 * which holds the lines; otherwise it is the scrollbar's own root.
+	 */
+	private readonly scrollContainer: FastDomNode<HTMLElement>;
 	/** Native mode only: an empty box that gives the browser scroll container the full scroll size. */
 	private readonly scrollSpacer: FastDomNode<HTMLElement> | null;
 
@@ -51,8 +70,8 @@ export class EditorScrollbar extends ViewPart {
 			useShadows: false,
 			lazyRender: true,
 
-			vertical: NATIVE_SCROLL ? ScrollbarVisibility.Hidden : scrollbar.vertical,
-			horizontal: NATIVE_SCROLL ? ScrollbarVisibility.Hidden : scrollbar.horizontal,
+			vertical: scrollbar.vertical,
+			horizontal: scrollbar.horizontal,
 			verticalHasArrows: scrollbar.verticalHasArrows,
 			horizontalHasArrows: scrollbar.horizontalHasArrows,
 			verticalScrollbarSize: scrollbar.verticalScrollbarSize,
@@ -69,24 +88,30 @@ export class EditorScrollbar extends ViewPart {
 			inertialScroll: inertialScroll,
 		};
 
-		this.scrollbar = this._register(new SmoothScrollableElement(linesContent.domNode, scrollbarOptions, this._context.viewLayout.getScrollable()));
+		// Native mode: the browser scrolls a container that holds the lines. It is a sibling of the scrollbars, not
+		// their parent, so the thumbs stay in place while the content scrolls.
+		const nativeScrollContainer = NATIVE_SCROLL ? createNativeScrollContainer(linesContent) : null;
+
+		this.scrollbar = this._register(new SmoothScrollableElement(nativeScrollContainer ? nativeScrollContainer.domNode : linesContent.domNode, scrollbarOptions, this._context.viewLayout.getScrollable()));
 		PartFingerprints.write(this.scrollbar.getDomNode(), PartFingerprint.ScrollableElement);
 
 		this.scrollbarDomNode = createFastDomNode(this.scrollbar.getDomNode());
 		this.scrollbarDomNode.setPosition('absolute');
 		this._setLayout();
 
-		if (NATIVE_SCROLL) {
-			// The browser scrolls this element; the spacer makes its scrollable area match the view's.
-			this.scrollbarDomNode.domNode.style.overflow = 'auto';
+		if (nativeScrollContainer) {
+			// ScrollableElement set overflow: hidden on the container; the browser has to scroll it.
+			nativeScrollContainer.domNode.style.overflow = 'auto';
+			this.scrollContainer = nativeScrollContainer;
 			this.scrollSpacer = createFastDomNode(document.createElement('div'));
 			this.scrollSpacer.setPosition('absolute');
 			this.scrollSpacer.setTop(0);
 			this.scrollSpacer.setLeft(0);
 			// Only the browser's scroll container should react to the mouse here, not the spacer.
 			this.scrollSpacer.domNode.style.pointerEvents = 'none';
-			this.scrollbarDomNode.appendChild(this.scrollSpacer);
+			this.scrollContainer.appendChild(this.scrollSpacer);
 		} else {
+			this.scrollContainer = this.scrollbarDomNode;
 			this.scrollSpacer = null;
 		}
 
@@ -121,18 +146,17 @@ export class EditorScrollbar extends ViewPart {
 		this._register(dom.addDisposableListener(linesContent.domNode, 'scroll', (e: Event) => onBrowserDesperateReveal(linesContent.domNode, true, false)));
 		this._register(dom.addDisposableListener(overflowGuardDomNode.domNode, 'scroll', (e: Event) => onBrowserDesperateReveal(overflowGuardDomNode.domNode, true, false)));
 		if (NATIVE_SCROLL) {
-			// The browser scrolls this element; mirror its position into the view model.
-			this._register(dom.addDisposableListener(this.scrollbarDomNode.domNode, 'scroll', () => {
+			// The browser scrolls the scroll container; mirror its position into the view model.
+			this._register(dom.addDisposableListener(this.scrollContainer.domNode, 'scroll', () => {
 				this._context.viewModel.viewLayout.setScrollPosition({
-					scrollTop: this.scrollbarDomNode.domNode.scrollTop,
-					scrollLeft: this.scrollbarDomNode.domNode.scrollLeft,
+					scrollTop: this.scrollContainer.domNode.scrollTop,
+					scrollLeft: this.scrollContainer.domNode.scrollLeft,
 				}, ScrollType.Immediate);
 			}));
 		} else {
 			this._register(dom.addDisposableListener(this.scrollbarDomNode.domNode, 'scroll', (e: Event) => onBrowserDesperateReveal(this.scrollbarDomNode.domNode, true, false)));
 		}
 	}
-
 
 	private _setLayout(): void {
 		const options = this._context.configuration.options;
@@ -160,13 +184,18 @@ export class EditorScrollbar extends ViewPart {
 		return this.scrollbarDomNode;
 	}
 
+	/** Native mode: the element the browser scrolls. The view puts the gutter and the lines in it. */
+	public getScrollContainerDomNode(): FastDomNode<HTMLElement> {
+		return this.scrollContainer;
+	}
+
 	public delegateVerticalScrollbarPointerDown(browserEvent: PointerEvent): void {
 		this.scrollbar.delegateVerticalScrollbarPointerDown(browserEvent);
 	}
 
 	public delegateScrollFromMouseWheelEvent(browserEvent: IMouseWheelEvent) {
 		if (NATIVE_SCROLL) {
-			this.scrollbarDomNode.domNode.scrollBy({ top: browserEvent.deltaY, left: browserEvent.deltaX });
+			this.scrollContainer.domNode.scrollBy({ top: browserEvent.deltaY, left: browserEvent.deltaX });
 			return;
 		}
 		this.scrollbar.delegateScrollFromMouseWheelEvent(browserEvent);
@@ -186,8 +215,8 @@ export class EditorScrollbar extends ViewPart {
 			const fastScrollSensitivity = options.get(EditorOption.fastScrollSensitivity);
 			const scrollPredominantAxis = options.get(EditorOption.scrollPredominantAxis);
 			const newOpts: ScrollableElementChangeOptions = {
-				vertical: NATIVE_SCROLL ? ScrollbarVisibility.Hidden : scrollbar.vertical,
-				horizontal: NATIVE_SCROLL ? ScrollbarVisibility.Hidden : scrollbar.horizontal,
+				vertical: scrollbar.vertical,
+				horizontal: scrollbar.horizontal,
 				verticalScrollbarSize: scrollbar.verticalScrollbarSize,
 				horizontalScrollbarSize: scrollbar.horizontalScrollbarSize,
 				scrollByPage: scrollbar.scrollByPage,
@@ -226,7 +255,7 @@ export class EditorScrollbar extends ViewPart {
 
 	private _renderNativeScroll(spacer: FastDomNode<HTMLElement>): void {
 		const viewLayout = this._context.viewModel.viewLayout;
-		const domNode = this.scrollbarDomNode.domNode;
+		const domNode = this.scrollContainer.domNode;
 
 		// Size the spacer before setting scroll offsets, or the browser clamps them to the old size.
 		// The gutter sits left of the lines in the same container, so the spacer includes its width.

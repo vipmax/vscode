@@ -56,6 +56,17 @@
 
 /* -------------------- Misc -------------------- */
 
+/* Native scroll mode: the browser scrolls this container, so hide its own scrollbars; the editor draws its own beside it. */
+.monaco-editor .native-scroll-container {
+	scrollbar-width: none;
+}
+
+.monaco-editor .native-scroll-container::-webkit-scrollbar {
+	display: none;
+	width: 0;
+	height: 0;
+}
+
 .monaco-editor .overflow-guard {
 	position: relative;
 	overflow: hidden;

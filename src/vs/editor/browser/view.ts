@@ -283,7 +283,7 @@ export class View extends ViewEventHandler {
 		this._linesContent.appendChild(this._viewCursors.getDomNode());
 		if (NATIVE_SCROLL) {
 			// Inside the browser's scroll container, so the gutter scrolls with the lines.
-			this._scrollbar.getDomNode().appendChild(margin.getDomNode());
+			this._scrollbar.getScrollContainerDomNode().appendChild(margin.getDomNode());
 		} else {
 			this._overflowGuardContainer.appendChild(margin.getDomNode());
 		}
