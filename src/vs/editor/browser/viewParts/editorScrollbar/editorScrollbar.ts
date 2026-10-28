@@ -138,14 +138,16 @@ export class EditorScrollbar extends ViewPart {
 		const options = this._context.configuration.options;
 		const layoutInfo = options.get(EditorOption.layoutInfo);
 
-		this.scrollbarDomNode.setLeft(layoutInfo.contentLeft);
+		// In native mode the scroll container also holds the gutter, so it starts at the editor's left edge.
+		const gutterWidth = NATIVE_SCROLL ? layoutInfo.contentLeft : 0;
+		this.scrollbarDomNode.setLeft(NATIVE_SCROLL ? 0 : layoutInfo.contentLeft);
 
 		const minimap = options.get(EditorOption.minimap);
 		const side = minimap.side;
 		if (side === 'right') {
-			this.scrollbarDomNode.setWidth(layoutInfo.contentWidth + layoutInfo.minimap.minimapWidth);
+			this.scrollbarDomNode.setWidth(gutterWidth + layoutInfo.contentWidth + layoutInfo.minimap.minimapWidth);
 		} else {
-			this.scrollbarDomNode.setWidth(layoutInfo.contentWidth);
+			this.scrollbarDomNode.setWidth(gutterWidth + layoutInfo.contentWidth);
 		}
 		this.scrollbarDomNode.setHeight(layoutInfo.height);
 	}
@@ -227,7 +229,9 @@ export class EditorScrollbar extends ViewPart {
 		const domNode = this.scrollbarDomNode.domNode;
 
 		// Size the spacer before setting scroll offsets, or the browser clamps them to the old size.
-		spacer.setWidth(viewLayout.getScrollWidth());
+		// The gutter sits left of the lines in the same container, so the spacer includes its width.
+		const contentLeft = this._context.configuration.options.get(EditorOption.layoutInfo).contentLeft;
+		spacer.setWidth(viewLayout.getScrollWidth() + contentLeft);
 		spacer.setHeight(viewLayout.getScrollHeight());
 
 		const scrollTop = viewLayout.getCurrentScrollTop();

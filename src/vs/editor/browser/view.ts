@@ -281,7 +281,12 @@ export class View extends ViewEventHandler {
 		this._linesContent.appendChild(this._viewLines.getDomNode());
 		this._linesContent.appendChild(this._contentWidgets.domNode);
 		this._linesContent.appendChild(this._viewCursors.getDomNode());
-		this._overflowGuardContainer.appendChild(margin.getDomNode());
+		if (NATIVE_SCROLL) {
+			// Inside the browser's scroll container, so the gutter scrolls with the lines.
+			this._scrollbar.getDomNode().appendChild(margin.getDomNode());
+		} else {
+			this._overflowGuardContainer.appendChild(margin.getDomNode());
+		}
 		this._overflowGuardContainer.appendChild(this._scrollbar.getDomNode());
 		if (this._viewGpuContext) {
 			this._overflowGuardContainer.appendChild(this._viewGpuContext.canvas);
@@ -455,7 +460,10 @@ export class View extends ViewEventHandler {
 		this._overflowGuardContainer.setHeight(layoutInfo.height);
 
 		// https://stackoverflow.com/questions/38905916/content-in-google-chrome-larger-than-16777216-px-not-being-rendered
-		if (!NATIVE_SCROLL) {
+		if (NATIVE_SCROLL) {
+			// The scroll container starts at the editor's left edge (it also holds the gutter), so offset the lines.
+			this._linesContent.setLeft(layoutInfo.contentLeft);
+		} else {
 			this._linesContent.setWidth(16777216);
 			this._linesContent.setHeight(16777216);
 		}

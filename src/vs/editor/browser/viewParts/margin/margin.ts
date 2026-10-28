@@ -7,6 +7,7 @@ import './margin.css';
 import { FastDomNode, createFastDomNode } from '../../../../base/browser/fastDomNode.js';
 import { ViewPart } from '../../view/viewPart.js';
 import { RenderingContext, RestrictedRenderingContext } from '../../view/renderingContext.js';
+import { NATIVE_SCROLL } from '../../nativeScroll.js';
 import { ViewContext } from '../../../common/viewModel/viewContext.js';
 import * as viewEvents from '../../../common/viewEvents.js';
 import { EditorOption } from '../../../common/config/editorOptions.js';
@@ -40,7 +41,15 @@ export class Margin extends ViewPart {
 
 		this._domNode = createFastDomNode(document.createElement('div'));
 		this._domNode.setClassName(Margin.OUTER_CLASS_NAME);
-		this._domNode.setPosition('absolute');
+		if (NATIVE_SCROLL) {
+			// In flow inside the browser's scroll container: it scrolls with the lines and only sticks horizontally.
+			this._domNode.setPosition('sticky');
+			this._domNode.setLeft(0);
+			// Above `.lines-content`, which is absolutely positioned and comes earlier in the DOM.
+			this._domNode.domNode.style.zIndex = '1';
+		} else {
+			this._domNode.setPosition('absolute');
+		}
 		this._domNode.setAttribute('role', 'presentation');
 		this._domNode.setAttribute('aria-hidden', 'true');
 
@@ -69,7 +78,7 @@ export class Margin extends ViewPart {
 		return true;
 	}
 	public override onScrollChanged(e: viewEvents.ViewScrollChangedEvent): boolean {
-		return super.onScrollChanged(e) || e.scrollTopChanged;
+		return super.onScrollChanged(e) || e.scrollTopChanged || e.scrollHeightChanged;
 	}
 
 	// --- end event handlers
@@ -81,10 +90,16 @@ export class Margin extends ViewPart {
 	public render(ctx: RestrictedRenderingContext): void {
 		this._domNode.setLayerHinting(this._canUseLayerHinting);
 		this._domNode.setContain('strict');
-		const adjustedScrollTop = ctx.scrollTop - ctx.bigNumbersDelta;
-		this._domNode.setTop(-adjustedScrollTop);
-
-		const height = Math.min(ctx.scrollHeight, 1000000);
+		let height: number;
+		if (NATIVE_SCROLL) {
+			// The browser places it in flow; its offset is the big-numbers delta the lines use, not the scroll position.
+			this._domNode.domNode.style.marginTop = `${ctx.bigNumbersDelta}px`;
+			height = Math.min(ctx.scrollHeight - ctx.bigNumbersDelta, 1000000);
+		} else {
+			const adjustedScrollTop = ctx.scrollTop - ctx.bigNumbersDelta;
+			this._domNode.setTop(-adjustedScrollTop);
+			height = Math.min(ctx.scrollHeight, 1000000);
+		}
 		this._domNode.setHeight(height);
 		this._domNode.setWidth(this._contentLeft);
 
