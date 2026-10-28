@@ -15,6 +15,8 @@ import * as viewEvents from '../../../common/viewEvents.js';
 import { getThemeTypeSelector } from '../../../../platform/theme/common/themeService.js';
 import { EditorOption } from '../../../common/config/editorOptions.js';
 import { IMouseWheelEvent } from '../../../../base/browser/mouseEvent.js';
+import { ScrollbarVisibility } from '../../../../base/common/scrollable.js';
+import { NATIVE_SCROLL } from '../../nativeScroll.js';
 
 /**
  * The editor scrollbar built on VS Code's scrollable element that sits beside
@@ -24,6 +26,8 @@ export class EditorScrollbar extends ViewPart {
 
 	private readonly scrollbar: SmoothScrollableElement;
 	private readonly scrollbarDomNode: FastDomNode<HTMLElement>;
+	/** Native mode only: an empty box that gives the browser scroll container the full scroll size. */
+	private readonly scrollSpacer: FastDomNode<HTMLElement> | null;
 
 	constructor(
 		context: ViewContext,
@@ -47,15 +51,15 @@ export class EditorScrollbar extends ViewPart {
 			useShadows: false,
 			lazyRender: true,
 
-			vertical: scrollbar.vertical,
-			horizontal: scrollbar.horizontal,
+			vertical: NATIVE_SCROLL ? ScrollbarVisibility.Hidden : scrollbar.vertical,
+			horizontal: NATIVE_SCROLL ? ScrollbarVisibility.Hidden : scrollbar.horizontal,
 			verticalHasArrows: scrollbar.verticalHasArrows,
 			horizontalHasArrows: scrollbar.horizontalHasArrows,
 			verticalScrollbarSize: scrollbar.verticalScrollbarSize,
 			verticalSliderSize: scrollbar.verticalSliderSize,
 			horizontalScrollbarSize: scrollbar.horizontalScrollbarSize,
 			horizontalSliderSize: scrollbar.horizontalSliderSize,
-			handleMouseWheel: scrollbar.handleMouseWheel,
+			handleMouseWheel: NATIVE_SCROLL ? false : scrollbar.handleMouseWheel,
 			alwaysConsumeMouseWheel: scrollbar.alwaysConsumeMouseWheel,
 			arrowSize: scrollbar.arrowSize,
 			mouseWheelScrollSensitivity: mouseWheelScrollSensitivity,
@@ -71,6 +75,20 @@ export class EditorScrollbar extends ViewPart {
 		this.scrollbarDomNode = createFastDomNode(this.scrollbar.getDomNode());
 		this.scrollbarDomNode.setPosition('absolute');
 		this._setLayout();
+
+		if (NATIVE_SCROLL) {
+			// The browser scrolls this element; the spacer makes its scrollable area match the view's.
+			this.scrollbarDomNode.domNode.style.overflow = 'auto';
+			this.scrollSpacer = createFastDomNode(document.createElement('div'));
+			this.scrollSpacer.setPosition('absolute');
+			this.scrollSpacer.setTop(0);
+			this.scrollSpacer.setLeft(0);
+			// Only the browser's scroll container should react to the mouse here, not the spacer.
+			this.scrollSpacer.domNode.style.pointerEvents = 'none';
+			this.scrollbarDomNode.appendChild(this.scrollSpacer);
+		} else {
+			this.scrollSpacer = null;
+		}
 
 		// When having a zone widget that calls .focus() on one of its dom elements,
 		// the browser will try desperately to reveal that dom node, unexpectedly
@@ -102,7 +120,17 @@ export class EditorScrollbar extends ViewPart {
 		this._register(dom.addDisposableListener(viewDomNode.domNode, 'scroll', (e: Event) => onBrowserDesperateReveal(viewDomNode.domNode, true, true)));
 		this._register(dom.addDisposableListener(linesContent.domNode, 'scroll', (e: Event) => onBrowserDesperateReveal(linesContent.domNode, true, false)));
 		this._register(dom.addDisposableListener(overflowGuardDomNode.domNode, 'scroll', (e: Event) => onBrowserDesperateReveal(overflowGuardDomNode.domNode, true, false)));
-		this._register(dom.addDisposableListener(this.scrollbarDomNode.domNode, 'scroll', (e: Event) => onBrowserDesperateReveal(this.scrollbarDomNode.domNode, true, false)));
+		if (NATIVE_SCROLL) {
+			// The browser scrolls this element; mirror its position into the view model.
+			this._register(dom.addDisposableListener(this.scrollbarDomNode.domNode, 'scroll', () => {
+				this._context.viewModel.viewLayout.setScrollPosition({
+					scrollTop: this.scrollbarDomNode.domNode.scrollTop,
+					scrollLeft: this.scrollbarDomNode.domNode.scrollLeft,
+				}, ScrollType.Immediate);
+			}));
+		} else {
+			this._register(dom.addDisposableListener(this.scrollbarDomNode.domNode, 'scroll', (e: Event) => onBrowserDesperateReveal(this.scrollbarDomNode.domNode, true, false)));
+		}
 	}
 
 
@@ -135,6 +163,10 @@ export class EditorScrollbar extends ViewPart {
 	}
 
 	public delegateScrollFromMouseWheelEvent(browserEvent: IMouseWheelEvent) {
+		if (NATIVE_SCROLL) {
+			this.scrollbarDomNode.domNode.scrollBy({ top: browserEvent.deltaY, left: browserEvent.deltaX });
+			return;
+		}
 		this.scrollbar.delegateScrollFromMouseWheelEvent(browserEvent);
 	}
 
@@ -152,12 +184,12 @@ export class EditorScrollbar extends ViewPart {
 			const fastScrollSensitivity = options.get(EditorOption.fastScrollSensitivity);
 			const scrollPredominantAxis = options.get(EditorOption.scrollPredominantAxis);
 			const newOpts: ScrollableElementChangeOptions = {
-				vertical: scrollbar.vertical,
-				horizontal: scrollbar.horizontal,
+				vertical: NATIVE_SCROLL ? ScrollbarVisibility.Hidden : scrollbar.vertical,
+				horizontal: NATIVE_SCROLL ? ScrollbarVisibility.Hidden : scrollbar.horizontal,
 				verticalScrollbarSize: scrollbar.verticalScrollbarSize,
 				horizontalScrollbarSize: scrollbar.horizontalScrollbarSize,
 				scrollByPage: scrollbar.scrollByPage,
-				handleMouseWheel: scrollbar.handleMouseWheel,
+				handleMouseWheel: NATIVE_SCROLL ? false : scrollbar.handleMouseWheel,
 				mouseWheelScrollSensitivity: mouseWheelScrollSensitivity,
 				fastScrollSensitivity: fastScrollSensitivity,
 				scrollPredominantAxis: scrollPredominantAxis
@@ -184,6 +216,27 @@ export class EditorScrollbar extends ViewPart {
 	}
 
 	public render(ctx: RestrictedRenderingContext): void {
+		if (this.scrollSpacer) {
+			this._renderNativeScroll(this.scrollSpacer);
+		}
 		this.scrollbar.renderNow();
+	}
+
+	private _renderNativeScroll(spacer: FastDomNode<HTMLElement>): void {
+		const viewLayout = this._context.viewModel.viewLayout;
+		const domNode = this.scrollbarDomNode.domNode;
+
+		// Size the spacer before setting scroll offsets, or the browser clamps them to the old size.
+		spacer.setWidth(viewLayout.getScrollWidth());
+		spacer.setHeight(viewLayout.getScrollHeight());
+
+		const scrollTop = viewLayout.getCurrentScrollTop();
+		if (domNode.scrollTop !== scrollTop) {
+			domNode.scrollTop = scrollTop;
+		}
+		const scrollLeft = viewLayout.getCurrentScrollLeft();
+		if (domNode.scrollLeft !== scrollLeft) {
+			domNode.scrollLeft = scrollLeft;
+		}
 	}
 }

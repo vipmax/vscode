@@ -27,6 +27,7 @@ import { ViewContext } from '../../../common/viewModel/viewContext.js';
 import { ViewLineOptions } from './viewLineOptions.js';
 import type { ViewGpuContext } from '../../gpu/viewGpuContext.js';
 import { TextDirection } from '../../../common/model.js';
+import { NATIVE_SCROLL } from '../../nativeScroll.js';
 
 class LastRenderedData {
 
@@ -671,9 +672,15 @@ export class ViewLines extends ViewPart implements IViewLines {
 		// (3) handle scrolling
 		this._linesContent.setLayerHinting(this._canUseLayerHinting);
 		this._linesContent.setContain('strict');
-		const adjustedScrollTop = this._context.viewLayout.getCurrentScrollTop() - viewportData.bigNumbersDelta;
-		this._linesContent.setTop(-adjustedScrollTop);
-		this._linesContent.setLeft(-this._context.viewLayout.getCurrentScrollLeft());
+		if (NATIVE_SCROLL) {
+			// The browser scrolls the container holding `.lines-content`, so lines stay at content offsets.
+			this._linesContent.setTop(viewportData.bigNumbersDelta);
+			this._linesContent.setLeft(0);
+		} else {
+			const adjustedScrollTop = this._context.viewLayout.getCurrentScrollTop() - viewportData.bigNumbersDelta;
+			this._linesContent.setTop(-adjustedScrollTop);
+			this._linesContent.setLeft(-this._context.viewLayout.getCurrentScrollLeft());
+		}
 	}
 
 	// --- width
