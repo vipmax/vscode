@@ -67,6 +67,7 @@ import { GpuMarkOverlay } from './viewParts/gpuMark/gpuMark.js';
 import { AccessibilitySupport } from '../../platform/accessibility/common/accessibility.js';
 import { Event, Emitter } from '../../base/common/event.js';
 import { IUserInteractionService } from '../../platform/userInteraction/browser/userInteractionService.js';
+import { NATIVE_SCROLL, NATIVE_SCROLL_OVERSCAN_PX } from './nativeScroll.js';
 
 
 export interface IContentWidgetData {
@@ -454,8 +455,10 @@ export class View extends ViewEventHandler {
 		this._overflowGuardContainer.setHeight(layoutInfo.height);
 
 		// https://stackoverflow.com/questions/38905916/content-in-google-chrome-larger-than-16777216-px-not-being-rendered
-		this._linesContent.setWidth(16777216);
-		this._linesContent.setHeight(16777216);
+		if (!NATIVE_SCROLL) {
+			this._linesContent.setWidth(16777216);
+			this._linesContent.setHeight(16777216);
+		}
 	}
 
 	private _getEditorClassName() {
@@ -613,7 +616,8 @@ export class View extends ViewEventHandler {
 					return null;
 				}
 
-				const partialViewportData = this._context.viewLayout.getLinesViewportData();
+				const overscanPx = NATIVE_SCROLL ? NATIVE_SCROLL_OVERSCAN_PX : 0;
+				const partialViewportData = this._context.viewLayout.getLinesViewportData(overscanPx);
 				this._context.viewModel.setViewport(partialViewportData.startLineNumber, partialViewportData.endLineNumber, partialViewportData.centeredLineNumber);
 
 				const viewportData = new ViewportData(

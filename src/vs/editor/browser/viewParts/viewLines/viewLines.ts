@@ -676,6 +676,9 @@ export class ViewLines extends ViewPart implements IViewLines {
 			// The browser scrolls the container holding `.lines-content`, so lines stay at content offsets.
 			this._linesContent.setTop(viewportData.bigNumbersDelta);
 			this._linesContent.setLeft(0);
+			// Size the box to the scroll extent: `contain: strict` clips its children to it, so they can't extend the scroll range.
+			this._linesContent.setWidth(this._context.viewLayout.getScrollWidth());
+			this._linesContent.setHeight(this._context.viewLayout.getScrollHeight() - viewportData.bigNumbersDelta);
 		} else {
 			const adjustedScrollTop = this._context.viewLayout.getCurrentScrollTop() - viewportData.bigNumbersDelta;
 			this._linesContent.setTop(-adjustedScrollTop);

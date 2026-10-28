@@ -137,7 +137,7 @@ export interface IViewLayout {
 	setMaxLineWidth(maxLineWidth: number): void;
 	setOverlayWidgetsMinWidth(overlayWidgetsMinWidth: number): void;
 
-	getLinesViewportData(): IPartialViewLinesViewportData;
+	getLinesViewportData(overscanPx?: number): IPartialViewLinesViewportData;
 	getLinesViewportDataAtScrollTop(scrollTop: number): IPartialViewLinesViewportData;
 	getWhitespaces(): IEditorWhitespace[];
 

@@ -413,9 +413,13 @@ export class ViewLayout extends Disposable implements IViewLayout {
 	public getWhitespaceAtVerticalOffset(verticalOffset: number): IViewWhitespaceViewportData | null {
 		return this._linesLayout.getWhitespaceAtVerticalOffset(verticalOffset);
 	}
-	public getLinesViewportData(): IPartialViewLinesViewportData {
+	/**
+	 * @param overscanPx Extra pixels to include above and below the visible box.
+	 */
+	public getLinesViewportData(overscanPx = 0): IPartialViewLinesViewportData {
 		const visibleBox = this.getCurrentViewport();
-		return this._linesLayout.getLinesViewportData(visibleBox.top, visibleBox.top + visibleBox.height);
+		const top = Math.max(0, visibleBox.top - overscanPx);
+		return this._linesLayout.getLinesViewportData(top, visibleBox.top + visibleBox.height + overscanPx);
 	}
 	public getLinesViewportDataAtScrollTop(scrollTop: number): IPartialViewLinesViewportData {
 		// do some minimal validations on scrollTop
