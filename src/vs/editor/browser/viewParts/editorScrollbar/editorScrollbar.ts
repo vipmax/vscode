@@ -47,6 +47,11 @@ export class EditorScrollbar extends ViewPart {
 	private readonly scrollContainer: FastDomNode<HTMLElement>;
 	/** Native mode only: an empty box that gives the browser scroll container the full scroll size. */
 	private readonly scrollSpacer: FastDomNode<HTMLElement> | null;
+	/**
+	 * Native mode: the scroll offsets last written to the scroll container. The view writes them at render, so a
+	 * browser scroll event can report an offset the view has already moved past. Such an event is not a user scroll.
+	 */
+	private _nativeScrollWritten = { scrollTop: 0, scrollLeft: 0 };
 
 	constructor(
 		context: ViewContext,
@@ -148,10 +153,13 @@ export class EditorScrollbar extends ViewPart {
 		if (NATIVE_SCROLL) {
 			// The browser scrolls the scroll container; mirror its position into the view model.
 			this._register(dom.addDisposableListener(this.scrollContainer.domNode, 'scroll', () => {
-				this._context.viewModel.viewLayout.setScrollPosition({
-					scrollTop: this.scrollContainer.domNode.scrollTop,
-					scrollLeft: this.scrollContainer.domNode.scrollLeft,
-				}, ScrollType.Immediate);
+				const { scrollTop, scrollLeft } = this.scrollContainer.domNode;
+				const written = this._nativeScrollWritten;
+				if (scrollTop === written.scrollTop && scrollLeft === written.scrollLeft) {
+					return;
+				}
+				this._nativeScrollWritten = { scrollTop, scrollLeft };
+				this._context.viewModel.viewLayout.setScrollPosition({ scrollTop, scrollLeft }, ScrollType.Immediate);
 			}));
 		} else {
 			this._register(dom.addDisposableListener(this.scrollbarDomNode.domNode, 'scroll', (e: Event) => onBrowserDesperateReveal(this.scrollbarDomNode.domNode, true, false)));
@@ -271,5 +279,6 @@ export class EditorScrollbar extends ViewPart {
 		if (domNode.scrollLeft !== scrollLeft) {
 			domNode.scrollLeft = scrollLeft;
 		}
+		this._nativeScrollWritten = { scrollTop, scrollLeft };
 	}
 }
