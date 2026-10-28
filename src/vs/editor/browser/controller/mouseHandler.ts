@@ -149,6 +149,12 @@ export class MouseHandler extends ViewEventHandler {
 		const onMouseWheel = (browserEvent: IMouseWheelEvent) => {
 			this.viewController.emitMouseWheel(browserEvent);
 
+			if (this._context.configuration.options.get(EditorOption.experimentalNativeScroll) && !hasMouseWheelZoomModifiers(browserEvent)) {
+				// Native scroll: the browser scrolls the editor's scroll container. The workbench cancels wheel events
+				// that reach it, so stop them here. Zoom gestures (with modifiers) still propagate and are cancelled.
+				browserEvent.stopPropagation();
+			}
+
 			if (!this._context.configuration.options.get(EditorOption.mouseWheelZoom)) {
 				return;
 			}

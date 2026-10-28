@@ -59,6 +59,8 @@
 /* Native scroll mode: the browser scrolls this container, so hide its own scrollbars; the editor draws its own beside it. */
 .monaco-editor .native-scroll-container {
 	scrollbar-width: none;
+	/* Keep horizontal swipes on the editor from navigating the page, as the workbench does for other wheel events. */
+	overscroll-behavior: contain;
 }
 
 .monaco-editor .native-scroll-container::-webkit-scrollbar {
